@@ -1,0 +1,7 @@
+{
+  "name": "OPI Prep Master",
+  "description": "An AI-powered Oral Proficiency Interview simulator to help you prepare for language certification exams. Features text and live voice practice with ACTFL-aligned feedback.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
