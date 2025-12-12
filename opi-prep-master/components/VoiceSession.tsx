@@ -61,7 +61,7 @@ const VoiceSession: React.FC<VoiceSessionProps> = ({ config, onFinish, onCancel 
       setError(null);
       setHasStarted(true);
       
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY || '' });
       
       // Setup Audio Contexts
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
