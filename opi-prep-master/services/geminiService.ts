@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { FeedbackSection } from "../types";
 
@@ -18,7 +19,14 @@ export const generateFeedback = async (transcript: string): Promise<FeedbackSect
     TRANSCRIPT:
     ${transcript}
     
-    Please provide the output in JSON format with the keys: rating, strengths (array of strings), areasForImprovement (array of strings), tips (array of strings), and detailedAnalysis (string).
+    Please provide the output in JSON format with the following keys:
+    - rating: Estimated ILR Level (e.g., Level 1+, Level 2).
+    - strengths: Array of strings listing the candidate's strengths.
+    - areasForImprovement: Array of strings listing weak points.
+    - tips: Array of strings with specific pedagogical advice.
+    - detailedAnalysis: A paragraph explaining the rating.
+    - vocabulary: Array of strings listing 5-10 useful vocabulary words or phrases relevant to the topics discussed that would improve the candidate's speech (e.g. synonyms for words they overused, or technical terms they missed).
+    - grammar: Array of strings listing specific grammar topics the candidate needs to review (e.g., "Past Tense Irregular Verbs", "Subjunctive Mood").
   `;
 
   try {
@@ -34,7 +42,9 @@ export const generateFeedback = async (transcript: string): Promise<FeedbackSect
             strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
             areasForImprovement: { type: Type.ARRAY, items: { type: Type.STRING } },
             tips: { type: Type.ARRAY, items: { type: Type.STRING } },
-            detailedAnalysis: { type: Type.STRING }
+            detailedAnalysis: { type: Type.STRING },
+            vocabulary: { type: Type.ARRAY, items: { type: Type.STRING } },
+            grammar: { type: Type.ARRAY, items: { type: Type.STRING } }
           }
         }
       }
@@ -42,7 +52,15 @@ export const generateFeedback = async (transcript: string): Promise<FeedbackSect
 
     const text = response.text;
     if (!text) throw new Error("No response from AI");
-    return JSON.parse(text) as FeedbackSection;
+    
+    const parsed = JSON.parse(text);
+    
+    // Attach the original transcript to the feedback object
+    return {
+      ...parsed,
+      transcript
+    } as FeedbackSection;
+
   } catch (error) {
     console.error("Error generating feedback:", error);
     return {
@@ -50,7 +68,10 @@ export const generateFeedback = async (transcript: string): Promise<FeedbackSect
       strengths: [],
       areasForImprovement: ["Could not generate report."],
       tips: ["Please try again."],
-      detailedAnalysis: "An error occurred while processing the transcript."
+      detailedAnalysis: "An error occurred while processing the transcript.",
+      transcript: transcript || "No transcript available.",
+      vocabulary: [],
+      grammar: []
     };
   }
 };

@@ -6,11 +6,6 @@ export enum ProficiencyLevel {
   SUPERIOR = 'Superior'
 }
 
-export enum PracticeMode {
-  TEXT = 'TEXT',
-  VOICE = 'VOICE'
-}
-
 export interface Message {
   id: string;
   role: 'user' | 'model' | 'system';
@@ -25,12 +20,14 @@ export interface FeedbackSection {
   areasForImprovement: string[];
   tips: string[];
   detailedAnalysis: string;
+  transcript: string;
+  vocabulary: string[];
+  grammar: string[];
 }
 
 export interface OPIConfig {
   targetLevel: ProficiencyLevel;
   language: string;
-  mode: PracticeMode;
   immediateFeedback: boolean;
 }
 

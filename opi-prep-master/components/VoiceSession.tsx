@@ -19,6 +19,10 @@ const VoiceSession: React.FC<VoiceSessionProps> = ({ config, onFinish, onCancel 
   const [isFinishing, setIsFinishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // New States
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  
   // Audio Refs
   const inputAudioContextRef = useRef<AudioContext | null>(null);
   const outputAudioContextRef = useRef<AudioContext | null>(null);
@@ -56,12 +60,51 @@ const VoiceSession: React.FC<VoiceSessionProps> = ({ config, onFinish, onCancel 
     };
   }, [cleanup]);
 
+  // Timer Effect
+  useEffect(() => {
+    let interval: number;
+    if (isConnected) {
+      interval = window.setInterval(() => {
+        setElapsedSeconds(prev => prev + 1);
+      }, 1000);
+    }
+    return () => window.clearInterval(interval);
+  }, [isConnected]);
+
+  // Wake Lock Effect
+  useEffect(() => {
+    let wakeLock: any = null;
+
+    const requestWakeLock = async () => {
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLock = await (navigator as any).wakeLock.request('screen');
+          console.log('Screen Wake Lock active');
+        } catch (err) {
+          console.log('Wake Lock request failed:', err);
+        }
+      }
+    };
+
+    if (isConnected) {
+      requestWakeLock();
+    }
+
+    return () => {
+      if (wakeLock) {
+        wakeLock.release();
+        console.log('Screen Wake Lock released');
+      }
+    };
+  }, [isConnected]);
+
   const initSession = async () => {
     try {
       setError(null);
       setHasStarted(true);
+      setElapsedSeconds(0);
       
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY || '' });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
       
       // Setup Audio Contexts
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -208,6 +251,22 @@ const VoiceSession: React.FC<VoiceSessionProps> = ({ config, onFinish, onCancel 
     }
   };
 
+  const toggleMute = () => {
+    if (audioStreamRef.current) {
+      const newState = !isMuted;
+      setIsMuted(newState);
+      audioStreamRef.current.getAudioTracks().forEach(track => {
+        track.enabled = !newState; // If muted (true), track enabled should be false
+      });
+    }
+  };
+
+  const formatTime = (totalSeconds: number) => {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   if (!hasStarted) {
     return (
       <div className="flex flex-col h-full bg-slate-900 text-white relative overflow-hidden items-center justify-center p-6">
@@ -249,20 +308,32 @@ const VoiceSession: React.FC<VoiceSessionProps> = ({ config, onFinish, onCancel 
       <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 opacity-50"></div>
       
       {/* Header */}
-      <div className="relative z-10 p-6 flex justify-between items-center">
+      <div className="relative z-10 p-6 flex justify-between items-center bg-slate-900/40 backdrop-blur-sm border-b border-white/10">
         <div>
-           <h2 className="text-xl font-bold tracking-tight">Live Voice Assessment</h2>
+           <h2 className="text-xl font-bold tracking-tight">Live Assessment</h2>
            <div className="flex items-center gap-2">
-              <p className="text-blue-200 text-sm">Target: {config.targetLevel} | {config.language}</p>
+              <p className="text-blue-200 text-sm">{config.targetLevel}</p>
               {config.immediateFeedback && (
-                <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-xs border border-blue-500/30">Immediate Feedback</span>
+                <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-xs border border-blue-500/30">Feedback On</span>
               )}
            </div>
         </div>
-        <div className="flex items-center gap-2">
-           <div className="px-3 py-1 rounded-full bg-red-500/20 text-red-300 text-xs font-mono animate-pulse border border-red-500/30">
-              ● LIVE
+        <div className="flex items-center gap-4">
+            <div className={`text-2xl font-mono font-bold ${elapsedSeconds > 900 ? 'text-red-400 animate-pulse' : 'text-white'}`}>
+                {formatTime(elapsedSeconds)}
+            </div>
+           <div className="px-3 py-1 rounded-full bg-red-500/20 text-red-300 text-xs font-mono animate-pulse border border-red-500/30 flex items-center gap-1 hidden sm:flex">
+              <span className="w-2 h-2 rounded-full bg-red-500 block"></span> LIVE
            </div>
+           
+           {/* Added Header Button */}
+            <button
+                onClick={handleEndSession}
+                disabled={isFinishing || !isConnected}
+                className="ml-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-bold rounded-lg shadow-sm transition disabled:opacity-50 border border-red-500/50"
+            >
+                {isFinishing ? 'Stopping...' : 'Stop & Rate'}
+            </button>
         </div>
       </div>
 
@@ -275,11 +346,17 @@ const VoiceSession: React.FC<VoiceSessionProps> = ({ config, onFinish, onCancel 
             <div className={`absolute inset-4 rounded-full border border-blue-400/20 ${isConnected ? 'animate-pulse' : ''}`}></div>
             
             {/* Avatar / Status */}
-            <div className="w-48 h-48 bg-slate-800 rounded-full shadow-2xl border-4 border-slate-700 flex justify-center items-center overflow-hidden">
+            <div className="w-48 h-48 bg-slate-800 rounded-full shadow-2xl border-4 border-slate-700 flex justify-center items-center overflow-hidden relative">
                 {isConnected ? (
                    <div className="text-6xl animate-pulse">🎙️</div>
                 ) : (
                    <div className="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+                )}
+                
+                {isMuted && (
+                   <div className="absolute inset-0 bg-red-500/50 flex items-center justify-center backdrop-blur-sm">
+                      <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3l18 18"></path></svg>
+                   </div>
                 )}
             </div>
          </div>
@@ -287,12 +364,17 @@ const VoiceSession: React.FC<VoiceSessionProps> = ({ config, onFinish, onCancel 
          {/* Audio Visualizers */}
          <div className="w-full max-w-lg space-y-4">
              <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 backdrop-blur-sm">
-                 <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-semibold">Tester Audio</p>
+                 <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-semibold flex justify-between">
+                     <span>Tester Audio</span>
+                 </p>
                  <AudioVisualizer analyser={outputAnalyserRef.current} isActive={isConnected} />
              </div>
              <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 backdrop-blur-sm">
-                 <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-semibold">Your Microphone</p>
-                 <AudioVisualizer analyser={inputAnalyserRef.current} isActive={isConnected} />
+                 <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-semibold flex justify-between items-center">
+                     <span>Your Microphone</span>
+                     {isMuted && <span className="text-red-400 text-[10px] bg-red-900/30 px-2 py-0.5 rounded border border-red-500/30">MUTED</span>}
+                 </p>
+                 <AudioVisualizer analyser={inputAnalyserRef.current} isActive={isConnected && !isMuted} />
              </div>
          </div>
          
@@ -301,7 +383,13 @@ const VoiceSession: React.FC<VoiceSessionProps> = ({ config, onFinish, onCancel 
          )}
 
          {isConnected && (
-             <p className="text-slate-400 text-sm">Say <span className="text-white font-bold">"Hello"</span> to begin the interview.</p>
+             <p className="text-slate-400 text-sm text-center">
+                {isMuted ? (
+                    <span className="text-red-300">Microphone is muted. Tap "Unmute" to speak.</span>
+                ) : (
+                    <span>Speak naturally. The timer helps track your interview duration.</span>
+                )}
+             </p>
          )}
          
          {error && (
@@ -312,19 +400,39 @@ const VoiceSession: React.FC<VoiceSessionProps> = ({ config, onFinish, onCancel 
       </div>
 
       {/* Controls */}
-      <div className="relative z-10 bg-slate-800/80 p-6 backdrop-blur-md border-t border-slate-700 flex justify-center gap-6">
+      <div className="relative z-10 bg-slate-800/80 p-6 backdrop-blur-md border-t border-slate-700 flex flex-col md:flex-row justify-center gap-4 items-center">
+          
           <button 
-             onClick={onCancel}
-             className="px-6 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium transition"
+             onClick={toggleMute}
+             disabled={!isConnected}
+             className={`px-6 py-3 rounded-xl font-medium transition w-full md:w-auto flex items-center justify-center gap-2 ${isMuted ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`}
           >
-              Cancel
+              {isMuted ? (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3l18 18"></path></svg>
+                  Unmute Mic
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                  Mute Mic
+                </>
+              )}
           </button>
+
           <button 
              onClick={handleEndSession}
              disabled={isFinishing || !isConnected}
-             className="px-8 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold shadow-lg shadow-red-900/30 transition transform hover:scale-105 disabled:opacity-50 disabled:scale-100 flex items-center gap-2"
+             className="px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-900/30 transition transform hover:scale-105 disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2 w-full md:w-auto"
           >
-             {isFinishing ? 'Analyzing...' : 'End & Evaluate'}
+             {isFinishing ? 'Analyzing...' : 'Finish & Rate'}
+          </button>
+          
+           <button 
+             onClick={onCancel}
+             className="px-4 py-3 rounded-xl text-slate-400 hover:text-white font-medium transition w-full md:w-auto"
+          >
+              Cancel
           </button>
       </div>
     </div>

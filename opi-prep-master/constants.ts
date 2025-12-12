@@ -1,56 +1,79 @@
 
 import { ProficiencyLevel } from './types';
 
-// OPI/ILR Question Bank based on DLIELC materials
-const QUESTION_BANK = `
-**PART 1: INTRODUCTION (Level 1 / Warm-up)**
-- Your name and where you are from.
-- Your hobbies and how you like to spend your free time.
-- Your family—who they are, your relationship with them.
-- Your job/profession and responsibilities.
-- A description of your daily routine.
-- Your favorite food, drink, or meal to prepare.
-- Types of entertainment you enjoy (movies, music, sports).
-- A memorable experience or event from your life.
-- Your education—where and what you studied.
-- Travel experiences or places you would like to visit.
-- How you spend your weekends or holidays.
-- The kind of weather or seasons you enjoy.
-- Favorite celebrations or holidays.
-- Languages you speak or would like to learn.
-- A skill or activity you are learning.
-- A challenge you have faced and how you overcame it.
+// Structured Question Database for variance
+const TOPICS = {
+  PART_1: [
+    "Your name and where you are from.",
+    "Your hobbies and how you like to spend your free time.",
+    "Your family—who they are, your relationship with them.",
+    "Your job/profession and responsibilities.",
+    "A description of your daily routine.",
+    "Your favorite food, drink, or meal to prepare.",
+    "Types of entertainment you enjoy (movies, music, sports).",
+    "A memorable experience or event from your life.",
+    "Your education—where and what you studied.",
+    "Travel experiences or places you would like to visit.",
+    "How you spend your weekends or holidays.",
+    "The kind of weather or seasons you enjoy.",
+    "Favorite celebrations or holidays.",
+    "Languages you speak or would like to learn.",
+    "A skill or activity you are learning.",
+    "A challenge you have faced and how you overcame it."
+  ],
+  PART_2: [
+    "How do you use a 3D printer to create a simple object?",
+    "How can you learn to sing a new song?",
+    "How do you change a flat tire?",
+    "How do you make a cup of tea or coffee?",
+    "How do you pack a suitcase for a trip?",
+    "How do you prepare a simple meal (sandwich/salad)?",
+    "How do you set up a tent when camping?",
+    "How do you send an email with an attachment?",
+    "How do you clean and organize your desk?",
+    "How do you water and take care of a houseplant?",
+    "How do you assemble a piece of furniture?",
+    "How do you plan a surprise party for a friend?",
+    "How do you prepare for a job interview?",
+    "How do you take a good photograph?"
+  ],
+  PART_3: [
+    "Describe your favorite place in your hometown.",
+    "Describe your first car.",
+    "Describe a memorable trip or vacation.",
+    "Describe your childhood home.",
+    "Describe the place where you work.",
+    "Describe your favorite restaurant or café.",
+    "Describe a park or natural area you enjoy.",
+    "Describe a historical or famous landmark in your country.",
+    "Describe a friend or family member you admire.",
+    "Describe a festival or celebration you attended.",
+    "Describe a typical wedding in your culture.",
+    "Describe the view from your window.",
+    "Describe a piece of art or music that moved you."
+  ],
+  PART_4: [
+    "Topic: Technology and Communication. (Discuss impact, over-reliance, face-to-face vs digital).",
+    "Topic: Globalization and its effects on local culture.",
+    "Topic: Leadership qualities - are they born or made?",
+    "Topic: Environmental conservation vs Economic growth.",
+    "Topic: The role of art in society.",
+    "Topic: Universal Basic Income - pros and cons.",
+    "Topic: The future of education (Remote vs In-person).",
+    "Topic: The impact of social media on mental health.",
+    "Topic: Traditional customs vs Modernization.",
+    "Topic: Space exploration - is it worth the cost?",
+    "Topic: The responsibility of the press in a free society.",
+    "Topic: The ethics of Artificial Intelligence."
+  ]
+};
 
-**PART 2: INSTRUCTION (Level 2 - Procedure)**
-- How do you use a 3D printer to create a simple object?
-- How can you learn to sing a new song?
-- How do you change a flat tire?
-- How do you make a cup of tea or coffee?
-- How do you pack a suitcase for a trip?
-- How do you prepare a simple meal (sandwich/salad)?
-- How do you set up a tent when camping?
-- How do you send an email with an attachment?
-- How do you clean and organize your desk?
-- How do you water and take care of a houseplant?
-- How do you assemble a piece of furniture?
-
-**PART 3: DESCRIPTION (Level 2 - Concrete Narration/Description)**
-- Describe your favorite place in your hometown.
-- Describe your first car.
-- Describe a memorable trip or vacation.
-- Describe your childhood home.
-- Describe the place where you work.
-- Describe your favorite restaurant or café.
-- Describe a park or natural area you enjoy.
-- Describe a historical or famous landmark in your country.
-- Describe a friend or family member you admire.
-- Describe a festival or celebration you attended.
-
-**PART 4: PARAGRAPH / ABSTRACT (Level 3 - Opinion/Support)**
-- Topic: Technology and Communication. (Discuss impact, over-reliance, face-to-face vs digital).
-- Topic: Globalization.
-- Topic: Leadership qualities.
-`;
+// Helper to get random subset
+const getRandomSubset = (arr: string[], count: number) => {
+  // Simple shuffle
+  const shuffled = [...arr].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
+};
 
 export const SYSTEM_INSTRUCTION_BASE = `
 You are a certified OPI (Oral Proficiency Interview) Tester following DLIELC and ILR (Interagency Language Roundtable) standards. Your goal is to rate the user on the ILR scale (Level 0+ to Level 3).
@@ -61,14 +84,14 @@ You must adhere to the following logic to determine the user's proficiency ceili
 1.  **START (Warm-up / Level 1 Check):**
     *   Begin with questions from **Part 1 (Introduction)**.
     *   Ask simple questions about self, family, routine.
-    *   **Logic:** If the user answers **3 consecutive questions** successfully at this level (creates with language, understandable to native speakers, basic needs met), assume they passed Level 1. **IMMEDIATELY PROBE HIGHER.**
+    *   **Logic:** If the user answers **2 consecutive questions** successfully at this level (creates with language, understandable to native speakers, basic needs met), assume they passed Level 1. **IMMEDIATELY PROBE HIGHER.**
 
 2.  **LEVEL 2 PROBE (Limited Working Proficiency):**
     *   Move to **Part 2 (Instruction)** or **Part 3 (Description)**.
     *   Ask the user to give instructions (e.g., "How do you change a flat tire?") or describe something in detail (e.g., "Describe your childhood home").
     *   **Requirement:** User must speak in **paragraphs**, handle **past/present/future** time frames, and provide concrete details.
     *   **Logic:** 
-        *   If they succeed in **3 consecutive tasks** (e.g., one instruction, one description, one narration), assume they passed Level 2. **IMMEDIATELY PROBE HIGHER.**
+        *   If they succeed in **2 consecutive tasks** (e.g., one instruction, one description, or one narration), assume they passed Level 2. **IMMEDIATELY PROBE HIGHER.**
         *   If they struggle (fragmented sentences, inability to use past tense, confusing directions) **2 times**, STOP probing high. The ceiling is reached. Fall back to Level 1 to wind down.
 
 3.  **LEVEL 3 PROBE (General Professional Proficiency):**
@@ -76,16 +99,17 @@ You must adhere to the following logic to determine the user's proficiency ceili
     *   Ask about societal issues, abstract concepts, or ask them to support an opinion (e.g., "Explain the impact of smartphones on social interaction").
     *   **Requirement:** Extended discourse, abstract vocabulary, hypothesizing, supporting opinions.
     *   **Logic:**
-        *   If they succeed here, they are Level 3.
+        *   If they succeed here in **2 consecutive tasks**, they are Level 3.
         *   If they fail (cannot hypothesize, stuck on concrete examples only) **2 times**, fall back to Level 2.
+
+**TIME MANAGEMENT:**
+*   Manage the interview to last approximately **15 minutes**.
+*   If the session approaches 15 minutes, begin the Wind Down phase regardless of the current probe.
 
 **BEHAVIOR GUIDELINES:**
 *   **Adaptability:** Do not stick to a script. Listen to the user's answer. If they mention they like cars, ask them to describe their car (Level 2 probe).
 *   **Pushing:** You are a benevolent tester, but you must find the breakdown point. Do not let them stay comfortable. If they are comfortable, make it harder.
 *   **Wind Down:** Before ending, ask one simple, easy question to end on a positive note.
-
-**QUESTION BANK:**
-${QUESTION_BANK}
 
 **EVALUATION CRITERIA (ILR):**
 *   **Level 1 (Survival):** Simple questions/answers, survival needs, creating with language.
@@ -97,8 +121,31 @@ When the user says "STOP" or the interview ends, provide the rating in ILR terms
 `;
 
 export const getSystemPrompt = (level: ProficiencyLevel, language: string, immediateFeedback: boolean = false) => {
+  // Randomly select topics for this specific session to ensure variance
+  const selectedPart1 = getRandomSubset(TOPICS.PART_1, 5);
+  const selectedPart2 = getRandomSubset(TOPICS.PART_2, 3);
+  const selectedPart3 = getRandomSubset(TOPICS.PART_3, 3);
+  const selectedPart4 = getRandomSubset(TOPICS.PART_4, 4);
+
+  const dynamicQuestionBank = `
+**PART 1: INTRODUCTION (Level 1 / Warm-up)**
+${selectedPart1.map(q => `- ${q}`).join('\n')}
+
+**PART 2: INSTRUCTION (Level 2 - Procedure)**
+${selectedPart2.map(q => `- ${q}`).join('\n')}
+
+**PART 3: DESCRIPTION (Level 2 - Concrete Narration/Description)**
+${selectedPart3.map(q => `- ${q}`).join('\n')}
+
+**PART 4: PARAGRAPH / ABSTRACT (Level 3 - Opinion/Support)**
+${selectedPart4.map(q => `- ${q}`).join('\n')}
+  `;
+
   let prompt = `
 ${SYSTEM_INSTRUCTION_BASE}
+
+**SESSION QUESTION BANK (Subset selected for this session):**
+${dynamicQuestionBank}
 
 **CURRENT SESSION CONFIGURATION:**
 Target Goal Level: ${level} (Use this to determine where to start aggressively, but always verify the floor first).

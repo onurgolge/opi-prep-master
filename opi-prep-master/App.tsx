@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
-import { OPIConfig, ProficiencyLevel, PracticeMode, FeedbackSection } from './types';
-import ChatSession from './components/ChatSession';
+import { OPIConfig, ProficiencyLevel, FeedbackSection } from './types';
 import VoiceSession from './components/VoiceSession';
 import FeedbackReport from './components/FeedbackReport';
 import ProficiencyStandards from './components/ProficiencyStandards';
@@ -16,14 +15,12 @@ const App: React.FC = () => {
   const [selectedLevel, setSelectedLevel] = useState<ProficiencyLevel>(ProficiencyLevel.INTERMEDIATE);
   // Default to English, no selection needed
   const selectedLang = 'English';
-  const [selectedMode, setSelectedMode] = useState<PracticeMode>(PracticeMode.VOICE);
   const [immediateFeedback, setImmediateFeedback] = useState(false);
 
   const startTest = () => {
     setConfig({
       targetLevel: selectedLevel,
       language: selectedLang,
-      mode: selectedMode,
       immediateFeedback: immediateFeedback
     });
     setHasStarted(true);
@@ -93,33 +90,13 @@ const App: React.FC = () => {
                 </p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Practice Mode</label>
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    onClick={() => setSelectedMode(PracticeMode.TEXT)}
-                    className={`p-4 rounded-xl border-2 transition flex flex-col items-center ${selectedMode === PracticeMode.TEXT ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 hover:border-blue-300 text-slate-600'}`}
-                  >
-                    <svg className="w-6 h-6 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                    <span className="font-semibold text-sm">Text Chat</span>
-                  </button>
-                  <button
-                    onClick={() => setSelectedMode(PracticeMode.VOICE)}
-                    className={`p-4 rounded-xl border-2 transition flex flex-col items-center ${selectedMode === PracticeMode.VOICE ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 hover:border-blue-300 text-slate-600'}`}
-                  >
-                    <svg className="w-6 h-6 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
-                    <span className="font-semibold text-sm">Voice Live</span>
-                  </button>
-                </div>
-              </div>
-
               <div 
                 className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100 transition"
                 onClick={() => setImmediateFeedback(!immediateFeedback)}
               >
                 <div className="flex flex-col">
                   <span className="font-medium text-slate-700 text-sm">Immediate Feedback</span>
-                  <span className="text-xs text-slate-500">Get real-time corrections and tips</span>
+                  <span className="text-xs text-slate-500">Get real-time corrections and tips during the call</span>
                 </div>
                 <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${immediateFeedback ? 'bg-blue-600' : 'bg-slate-300'}`}>
                    <span className={`${immediateFeedback ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition`}/>
@@ -139,15 +116,11 @@ const App: React.FC = () => {
         <div className="flex-1 overflow-y-auto bg-slate-50">
           <FeedbackReport feedback={feedback} onRestart={handleRestart} />
         </div>
-      ) : (
+      ) : config ? (
         <div className="flex-1 h-full">
-          {config?.mode === PracticeMode.TEXT ? (
-            <ChatSession config={config} onFinish={handleFinish} onCancel={handleCancel} />
-          ) : config?.mode === PracticeMode.VOICE ? (
-            <VoiceSession config={config!} onFinish={handleFinish} onCancel={handleCancel} />
-          ) : null}
+           <VoiceSession config={config} onFinish={handleFinish} onCancel={handleCancel} />
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

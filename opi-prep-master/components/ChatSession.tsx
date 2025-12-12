@@ -129,7 +129,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ config, onFinish, onCancel })
             </button>
             <button 
                 onClick={handleEndTest} 
-                disabled={isFinishing || messages.length < 2}
+                disabled={isFinishing || isLoading || messages.length < 2}
                 className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             >
                 {isFinishing ? (
